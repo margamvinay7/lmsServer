@@ -77,7 +77,7 @@ project-root/
 │   │   ├── queue.ts        # Redis queue setup
 │   │   ├── redis.ts        # Redis connection configuration
 │   │   └── cloudinary.ts   # Cloudinary configuration (future use)
-│   ├── app.ts              # Main Express app entry point
+│   ├── index.ts              # Main Express app entry point
 │   └── config/             # General configurations
 │       ├── prisma.ts       # Prisma client setup
 ├── Dockerfile              # Multi-stage Dockerfile
