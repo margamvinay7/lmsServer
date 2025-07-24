@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import processVideo from "../services/videoService";
+import processVideo from "../services/video.service";
 
 const uploadVideo = async (req: Request, res: Response) => {
   try {

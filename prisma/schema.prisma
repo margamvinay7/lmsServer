@@ -1,60 +1,319 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "postgresql"
-  // url      = env("DATABASE_URL")
-  url      = "postgresql://postgres:0710@localhost:5432/lms?schema=public"
+  url      = env("DATABASE_URL")
 }
 
+// --- Enums ---
+enum Role {
+  ADMIN
+  INSTRUCTOR
+  STUDENT
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// --- Core Models ---
 
 model User {
-  id String @id @default(cuid())
-  email String @unique
-  name String
-  password String
-  role Role
-  student Student?
-  teacher Teacher?
-  admin Admin?
-}
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
+  // Relationships
+  admin          Admin?
+  instructor     Instructor?
+  studentProfile StudentProfile?
 
-model Student{
-  id Int @id @default(autoincrement())
-  userId String @unique
-  user User @relation(fields: [userId],references: [id])
-}
+  // Relationships for payments and schedules
+  payments  Payment[]
+  schedules Schedule[]
 
+  // For 1-on-1 chat
+  sentMessages     ChatMessage[] @relation("SentMessages")
+  receivedMessages ChatMessage[] @relation("ReceivedMessages")
 
-model Teacher {
-  id Int @id @default(autoincrement())
-  userId String @unique
-  user User @relation(fields: [userId],references: [id])
+  // For group chat
+  groupChatMemberships GroupChatMember[]
+  groupChatMessages    GroupChatMessage[]
 
+  @@index([email])
 }
 
 model Admin {
-  id Int @id @default(autoincrement())
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String @unique
-  user User @relation(fields: [userId],references: [id])
 }
 
-// model Course {
-//   id Int @id @default(autoincrement())
-//   courseName String
+model Instructor {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String   @unique
+  bio         String?
+  department  String?
+  designation String?
+  experience  String?
+  skills      String[]
+  avatar      String?
 
-// }
+  // An instructor can create many courses
+  courses Course[]
+}
 
-enum Role {
-  Admin
-  Teacher
-  Student
+model StudentProfile {
+  id      String   @id @default(cuid())
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String   @unique
+  bio     String?
+  phone   String?
+  avatar  String?
+  address String?
+  city    String?
+  state   String?
+  country String?
+  zipCode String?
+
+  // A student can have many enrollments and track progress
+  enrollments     Enrollment[]
+  chapterProgress ChapterProgress[]
+  certifications  Certification[]
+}
+
+
+// --- Course Structure Models ---
+
+model Category {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  courses Course[] @relation("CategoryToCourse")
+}
+
+model Course {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  imageUrl     String?
+  price        Float?
+  isPublished  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  // Relationships
+  instructor   Instructor @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  instructorId String
+
+  chapters    Chapter[]
+  enrollments Enrollment[]
+  attachments Attachment[]
+  categories  Category[]   @relation("CategoryToCourse")
+  certification Certification?
+
+  // Relationships for payments and schedules
+  payments  Payment[]
+  schedules Schedule[]
+
+  @@index([instructorId])
+}
+
+model Chapter {
+  id            String   @id @default(cuid())
+  title         String
+  description   String?
+  videoUrl      String?
+  position      Int
+  isPublished   Boolean  @default(false)
+  isFree        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  // Relationships
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId String
+
+  progress ChapterProgress[]
+
+  @@index([courseId])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  // Relationships
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId String
+
+  @@index([courseId])
+}
+
+
+// --- Student & Progress Models ---
+
+model Enrollment {
+  id         String   @id @default(cuid())
+  enrolledAt DateTime @default(now())
+
+  // Relationships
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId String
+
+  @@unique([studentId, courseId])
+  @@index([studentId])
+  @@index([courseId])
+}
+
+model ChapterProgress {
+  id          String   @id @default(cuid())
+  isCompleted Boolean  @default(false)
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  // Relationships
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  chapterId String
+
+  @@unique([studentId, chapterId])
+  @@index([studentId])
+  @@index([chapterId])
+}
+
+model Certification {
+  id         String   @id @default(cuid())
+  issuedAt   DateTime @default(now())
+  
+  // Relationships
+  student    StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId  String
+
+  course     Course         @relation(fields: [courseId], references: [id])
+  courseId   String         @unique
+}
+
+
+// --- Payment & Scheduling Models ---
+
+model Payment {
+  id                String        @id @default(cuid())
+  amount            Float
+  currency          String
+  status            PaymentStatus
+  createdAt         DateTime      @default(now())
+  paymentGateway    String? // e.g., "stripe"
+  paymentIntentId   String?       @unique
+
+  // Relationships
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseId String?
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+model Schedule {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+
+  // Relationships
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId String?
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+
+// --- Communication Models ---
+
+// For 1-on-1 chats
+model ChatMessage {
+  id          String   @id @default(cuid())
+  content     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  // Relationships
+  sender    User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId  String
+
+  recipient User @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
+  recipientId String
+
+  @@index([senderId])
+  @@index([recipientId])
+}
+
+// For group chats
+model GroupChat {
+  id        String   @id @default(cuid())
+  name      String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+
+  // Relationships
+  members  GroupChatMember[]
+  messages GroupChatMessage[]
+}
+
+model GroupChatMember {
+  id        String   @id @default(cuid())
+  joinedAt  DateTime @default(now())
+
+  // Relationships
+  group    GroupChat @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId  String
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+}
+
+model GroupChatMessage {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  // Relationships
+  group   GroupChat @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId String
+
+  sender  User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId String
+
+  @@index([groupId])
 }
