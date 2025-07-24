@@ -27,7 +27,7 @@ const setAuthCookies = (res: Response, accessToken: string, refreshToken: string
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
+    sameSite: 'none',
     maxAge: 15 * 60 * 1000, // 15 minutes
   })
   res.cookie('refreshToken', refreshToken, {
