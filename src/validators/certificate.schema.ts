@@ -1,13 +1,13 @@
 import { z } from 'zod'
 
 export const CreateCertificationSchema = z.object({
-  userId: z.string().cuid(),
-  courseId: z.string().cuid(),
-  certificateUrl: z.string().url()
+  studentId: z.string().cuid(),
+  courseId: z.string().cuid()
 })
 
 export const UpdateCertificationSchema = z.object({
-  certificateUrl: z.string().url().optional()
+  studentId: z.string().cuid().optional(),
+  courseId: z.string().cuid().optional()
 })
 
 export type CreateCertificationInput = z.infer<typeof CreateCertificationSchema>

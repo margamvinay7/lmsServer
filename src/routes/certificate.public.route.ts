@@ -3,13 +3,13 @@ import { prisma } from '../utils/prisma'
 
 const router = Router()
 
-router.get('/verify/:hash', async (req: Request, res: Response) => {
-  const { hash } = req.params
+router.get('/verify/:id', async (req: Request, res: Response) => {
+  const { id } = req.params
 
   const cert = await prisma.certification.findUnique({
-    where: { certificateHash: hash },
+    where: { id },
     include: {
-      user: true,
+      student: { include: { user: true } },
       course: true
     }
   })
@@ -21,10 +21,9 @@ router.get('/verify/:hash', async (req: Request, res: Response) => {
 
   res.json({
     valid: true,
-    name: cert.user.name,
+    name: cert.student.user.name,
     course: cert.course.title,
-    issuedAt: cert.issuedAt,
-    certificateUrl: cert.certificateUrl
+    issuedAt: cert.issuedAt
   })
 })
 
