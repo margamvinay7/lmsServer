@@ -6,9 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx tsc",
-    "start": "node dist/index.js",
-    "nodetest": "ts-node ./src/index.ts",
-    "dev": "nodemon",
+    "start": "npx prisma generate && npx prisma migrate deploy && node dist/index.js",
+    "dev": "nodemon src/index.ts",
+    "migrate": "npx prisma migrate deploy",
+    "generate": "npx prisma generate",
     "seed": "npx ts-node prisma/seed.ts"
   },
   "keywords": [],

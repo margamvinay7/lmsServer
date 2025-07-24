@@ -1,37 +1,14 @@
-FROM node:18 AS base
-
+FROM node:20-alpine
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-
-RUN npm install
+RUN npm ci
 
 COPY . .
-
 RUN npm run build
 
-FROM node:18 AS main-app
-WORKDIR /app
-COPY --from=base /app/dist ./dist
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/package.json ./
+ENV NODE_ENV=production
 
-RUN mkdir -p ./dist/uploads
-
-EXPOSE 3000
-
-CMD [ "node","./dist/index.js" ]
-
-FROM node:18 AS worker
-WORKDIR /app
-
-COPY --from=base /app/dist ./dist
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/package.json ./
-
-RUN mkdir -p ./dist/uploads
-
-EXPOSE 4000
-
-CMD [ "node","./dist/workers/videoWorker.js" ]
+# Run Prisma generate and migrate before starting
+CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node dist/index.js"]
 

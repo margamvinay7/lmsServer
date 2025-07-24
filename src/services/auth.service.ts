@@ -9,7 +9,7 @@ import type { Response } from 'express'
 // --- Token Generation ---
 
 const generateAccessToken = (user: { id: string; role: Role }) => {
-  return jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET!, {
+  return jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET! || "secret", {
     expiresIn: '15m',
   })
 }
